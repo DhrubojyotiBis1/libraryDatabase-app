@@ -19,6 +19,7 @@ author -> author of the book
 HTTP STATUS CODE
 400 -> bad request 
 404 -> data not found
+405 -> method not allowed
 
 '''
 
@@ -48,14 +49,57 @@ def addEntryToDatabase(student):
     db.session.add(student)
     db.session.commit()
 
+def DeleteEntryFromDatabase(entry):
+    db.session.delete(entry)
+    db.session.commit()
 
-@app.route('/', methods=['POST', 'GET'])
-def home():
+
+@app.route('/', methods=['POST', 'GET', 'PUT'])
+def Home():
     if request.method == 'POST':
         return TakeBook()
     elif request.method == 'GET':
         return SeeBook()
+    elif request.method == 'PUT':
+        return SumbitBook()
+    return getStatusResponseFrom(405)
 
+
+@app.route('/database')
+def GetAll():
+    students = Student.query.all()
+    if students:
+        databaseDict = {}
+        for student in students:
+            studentDict = {'name': student.name, 'admNumber': student.admissionNumber}
+            books = student.books
+            listOfBooksBorrowed = []
+            for book in books:
+                bookDict = {'name': book.name,'author': book.author}
+                listOfBooksBorrowed.append(bookDict)
+            studentDict['Books'] = listOfBooksBorrowed
+            databaseDict[student.id] =  studentDict
+        return databaseDict
+    return getStatusResponseFrom(404)
+
+
+def SumbitBook():
+    admNumber = request.args.get('admNumber')
+    bookName = request.args.get('book')
+    authorName = request.args.get('author')
+    if admNumber and bookName and authorName:
+        student = Student.query.filter_by(admissionNumber=admNumber).first()
+        if student:
+            books = student.books
+            for book in books:
+                if bookName == book.name and authorName == book.author:
+                    DeleteEntryFromDatabase(book)
+                    books = student.books
+                    if not books:
+                        DeleteEntryFromDatabase(student)
+                    return getStatusResponseFrom(200)
+        return getStatusResponseFrom(404)
+    return getStatusResponseFrom(400)
 
 def SeeBook():
     admNumber = request.args.get('admNumber')
@@ -65,8 +109,8 @@ def SeeBook():
             books = student.books
             listOfBooksBorrowed = []
             for book in books:
-                newBook = {'name': book.name,'author': book.author}
-                listOfBooksBorrowed.append(newBook)
+                bookDict = {'name': book.name,'author': book.author}
+                listOfBooksBorrowed.append(bookDict)
             response = {'Books': listOfBooksBorrowed}
             return response
         return getStatusResponseFrom(404)
@@ -83,9 +127,10 @@ def TakeBook():
         if not student:
             student = Student(name=studentName, admissionNumber=admNumber)
             addEntryToDatabase(student)
-        book=Book(name=bookName, author=authorName, studentID=student.id)
-        addEntryToDatabase(book)
-        return getStatusResponseFrom(200)
+        if studentName == student.name:
+            book=Book(name=bookName, author=authorName, studentID=student.id)
+            addEntryToDatabase(book)
+            return getStatusResponseFrom(200)
     return getStatusResponseFrom(400)
    
 
