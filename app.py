@@ -69,7 +69,7 @@ def Home():
 def GetAll():
     students = Student.query.all()
     if students:
-        databaseDict = {}
+        database = []
         for student in students:
             studentDict = {'name': student.name, 'admNumber': student.admissionNumber}
             books = student.books
@@ -78,7 +78,8 @@ def GetAll():
                 bookDict = {'name': book.name,'author': book.author}
                 listOfBooksBorrowed.append(bookDict)
             studentDict['Books'] = listOfBooksBorrowed
-            databaseDict[student.id] =  studentDict
+            database.append(studentDict)
+        databaseDict = {'database': database}
         return databaseDict
     return getStatusResponseFrom(404)
 
