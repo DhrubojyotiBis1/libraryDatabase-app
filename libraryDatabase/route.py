@@ -1,6 +1,8 @@
 from flask import request
 from libraryDatabase import db, app
 from libraryDatabase.models import Student, Book
+from flask_mail import Message
+from libraryDatabase import mail
 
 '''
 Argument list:
@@ -16,7 +18,7 @@ HTTP STATUS CODE
 400 -> bad request 
 404 -> data not found
 405 -> method not allowed
-
+422 -> Unprocessable entity
 '''
 
 def getStatusResponseFrom(status):
@@ -101,6 +103,7 @@ def TakeBook():
     admNumber = request.args.get('admNumber')
     bookName = request.args.get('book')
     authorName = request.args.get('author')
+    studentEmail = request.args.get('email')
     if studentName and admNumber and bookName and authorName:
         student = Student.query.filter_by(admissionNumber=admNumber).first()
         if not student:
@@ -109,5 +112,17 @@ def TakeBook():
         if studentName == student.name:
             book=Book(name=bookName, author=authorName, studentID=student.id)
             addEntryToDatabase(book)
-            return getStatusResponseFrom(200)
+            return SendEmail(studentEmail)
     return getStatusResponseFrom(400)
+
+
+def SendEmail(studentEmail):
+    try:
+        msg = Message("LibraryDatabase", recipients=[studentEmail])
+        msg.body = 'Thank you! for using our services'
+        msg.html = '<h1>Thank you! for using our services</h1>'
+        mail.send(msg)
+        return getStatusResponseFrom(200)
+    except:
+        #Handel error here
+        return getStatusResponseFrom(422)
